@@ -1,23 +1,26 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const menuCategorySchema = new mongoose.Schema({
   restaurant_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Restaurant',
-    required: true
+    ref: "Restaurant",
+    required: true,
   },
   name: {
     type: String,
-    required: true
+    required: true,
+  },
+  description: {
+    type: String,
   },
   sort_order: {
     type: Number,
-    required: true
+    default: 999,
   },
   created_at: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-export const MenuCategory = mongoose.model('MenuCategory', menuCategorySchema);
+export const MenuCategory = mongoose.model("MenuCategory", menuCategorySchema);

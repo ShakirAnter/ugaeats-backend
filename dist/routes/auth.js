@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
+const phone_1 = require("../utils/phone");
 const auth_1 = require("../middleware/auth");
 const uploadToCloudinary_1 = require("../middleware/uploadToCloudinary");
 const cloudinary_1 = require("cloudinary");
@@ -13,18 +14,24 @@ const router = express_1.default.Router();
 // Register a new user
 router.post('/register', async (req, res) => {
     try {
-        const { email, password, full_name, role } = req.body;
-        // Check if user already exists
-        const existingUser = await User_1.User.findOne({ email });
+        const { email, password, full_name, role, phone } = req.body;
+        // Normalize phone (accept local 0XXXXXXXXX or raw 9 digits)
+        const normalizedPhone = (0, phone_1.normalizeUgandaPhone)(phone);
+        if (!normalizedPhone) {
+            return res.status(400).json({ error: 'Phone number must be a valid Uganda number (e.g. 0768057482 or +256768057482).' });
+        }
+        // Check if user already exists by email or phone
+        const existingUser = await User_1.User.findOne({ $or: [{ email }, { phone: normalizedPhone }] });
         if (existingUser) {
-            return res.status(400).json({ error: 'Email already registered' });
+            return res.status(400).json({ error: 'Email or phone already registered' });
         }
         // Create new user
         const user = new User_1.User({
             email,
             password,
             full_name,
-            role: role || 'customer'
+            role: role || 'customer',
+            phone: normalizedPhone
         });
         await user.save();
         const token = await user.generateAuthToken();
@@ -68,12 +75,24 @@ router.patch('/me', auth_1.auth, (0, uploadToCloudinary_1.singleUploadToCloudina
         return res.status(400).json({ error: 'Invalid updates!' });
     }
     try {
-        // If phone is being updated, validate the +256XXXXXXXXX format explicitly to provide a clear error
+        // If phone is being updated, accept local format (0XXXXXXXXX) or international (+256XXXXXXXXX)
+        // and normalize to +256XXXXXXXXX before saving.
         if (updates.includes('phone')) {
-            const phoneVal = req.body.phone;
-            const phoneRegex = /^\+256\d{9}$/;
-            if (!phoneRegex.test(phoneVal)) {
-                return res.status(400).json({ error: 'Phone number must be in the Uganda international format: +256XXXXXXXXX (no spaces).' });
+            let phoneVal = req.body.phone || '';
+            phoneVal = phoneVal.replace(/[\s-]/g, ''); // strip spaces/dashes
+            const localRegex = /^0\d{9}$/;
+            const intlRegex = /^\+256\d{9}$/;
+            if (localRegex.test(phoneVal)) {
+                // convert local to international
+                phoneVal = '+256' + phoneVal.slice(1);
+                req.body.phone = phoneVal;
+            }
+            else if (!intlRegex.test(phoneVal)) {
+                return res.status(400).json({ error: 'Phone number must be either local 0XXXXXXXXX or international +256XXXXXXXXX. It will be normalized to +256 format.' });
+            }
+            else {
+                // already in international format, ensure it's the sanitized version
+                req.body.phone = phoneVal;
             }
         }
         // If a new avatar was uploaded, remove the old avatar from Cloudinary (if present)

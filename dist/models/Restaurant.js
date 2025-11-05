@@ -16,6 +16,9 @@ const restaurantSchema = new mongoose_1.default.Schema({
     image_url: {
         type: String
     },
+    image_public_id: {
+        type: String
+    },
     address: {
         type: String,
         required: true

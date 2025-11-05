@@ -61,8 +61,26 @@ const userSchema = new mongoose_1.default.Schema({
 userSchema.pre("save", async function (next) {
     // `this` is the document being saved and is typed as IUser
     const user = this;
-    if (user.isModified && user.isModified("password")) {
-        user.password = await bcryptjs_1.default.hash(user.password, 8);
+    // Normalize phone if it's been modified: accept local (0XXXXXXXXX) and convert to +256XXXXXXXXX
+    try {
+        if (user.isModified && user.isModified("phone") && user.phone) {
+            let p = user.phone.toString();
+            // remove spaces and dashes
+            p = p.replace(/[\s-]/g, '');
+            const localRegex = /^0\d{9}$/;
+            const intlRegex = /^\+256\d{9}$/;
+            if (localRegex.test(p)) {
+                p = '+256' + p.slice(1);
+            }
+            // if it already matches intlRegex, keep it; otherwise leave and let mongoose validation fail
+            user.phone = p;
+        }
+        if (user.isModified && user.isModified("password")) {
+            user.password = await bcryptjs_1.default.hash(user.password, 8);
+        }
+    }
+    catch (err) {
+        return next(err);
     }
     next();
 });

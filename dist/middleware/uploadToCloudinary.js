@@ -16,7 +16,10 @@ const cloudinary_1 = require("cloudinary");
 if (process.env.CLOUDINARY_URL) {
     // cloudinary.v2 will read CLOUDINARY_URL automatically when calling config() with no args,
     // but passing it explicitly keeps intent clear.
-    cloudinary_1.v2.config({ cloudinary_url: process.env.CLOUDINARY_URL, secure: true });
+    cloudinary_1.v2.config({
+        cloudinary_url: process.env.CLOUDINARY_URL,
+        secure: true,
+    });
 }
 else {
     cloudinary_1.v2.config({
@@ -32,7 +35,11 @@ exports.upload = (0, multer_1.default)({ storage });
 // Helper to upload a buffer to Cloudinary
 function uploadBufferToCloudinary(buffer, options) {
     return new Promise((resolve, reject) => {
-        const stream = cloudinary_1.v2.uploader.upload_stream({ folder: options === null || options === void 0 ? void 0 : options.folder, public_id: options === null || options === void 0 ? void 0 : options.public_id, resource_type: 'image' }, (error, result) => {
+        const stream = cloudinary_1.v2.uploader.upload_stream({
+            folder: options === null || options === void 0 ? void 0 : options.folder,
+            public_id: options === null || options === void 0 ? void 0 : options.public_id,
+            resource_type: "image",
+        }, (error, result) => {
             if (error)
                 return reject(error);
             resolve(result);
@@ -40,32 +47,38 @@ function uploadBufferToCloudinary(buffer, options) {
         stream.end(buffer);
     });
 }
-// Middleware wrapper: expects a single file under `fieldName` (uses multer)
-// Uploads the file to Cloudinary and attaches the secure_url to req.body[targetField]
-function singleUploadToCloudinary(fieldName, targetField = 'image_url', folder) {
+function singleUploadToCloudinary(fieldName, targetField = "image_url", folder) {
     return async (req, res, next) => {
         const single = exports.upload.single(fieldName);
         single(req, res, async (err) => {
             if (err)
                 return next(err);
             const file = req.file;
-            if (!file)
-                return next(); // nothing to do
+            if (!file) {
+                console.log("⚠️ No file received");
+                return next(); // no file uploaded
+            }
             try {
+                console.log("📸 Uploading to Cloudinary:", file.originalname, "size:", file.size);
                 const result = await uploadBufferToCloudinary(file.buffer, { folder });
-                // attach URL(s) to body for downstream handlers
+                console.log("✅ Cloudinary upload result:", result);
+                if (!result || !result.secure_url) {
+                    console.log("❌ Cloudinary returned no URL");
+                    return next(new Error("Cloudinary upload failed"));
+                }
                 req.body[targetField] = result.secure_url || result.url;
                 req.body[`${targetField}_public_id`] = result.public_id;
                 return next();
             }
             catch (uploadErr) {
+                console.error("🚨 Upload error:", uploadErr);
                 return next(uploadErr);
             }
         });
     };
 }
 // Middleware wrapper for multiple files (array)
-function multipleUploadToCloudinary(fieldName, maxCount = 5, targetField = 'image_urls', folder) {
+function multipleUploadToCloudinary(fieldName, maxCount = 5, targetField = "image_urls", folder) {
     return async (req, res, next) => {
         const array = exports.upload.array(fieldName, maxCount);
         array(req, res, async (err) => {
@@ -76,7 +89,10 @@ function multipleUploadToCloudinary(fieldName, maxCount = 5, targetField = 'imag
                 return next();
             try {
                 const uploads = await Promise.all(files.map((f) => uploadBufferToCloudinary(f.buffer, { folder })));
-                req.body[targetField] = uploads.map((r) => ({ url: r.secure_url || r.url, public_id: r.public_id }));
+                req.body[targetField] = uploads.map((r) => ({
+                    url: r.secure_url || r.url,
+                    public_id: r.public_id,
+                }));
                 return next();
             }
             catch (uploadErr) {

@@ -1,46 +1,53 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const menuItemSchema = new mongoose.Schema({
   restaurant_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Restaurant',
-    required: true
+    ref: "Restaurant",
+    required: true,
   },
   category_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'MenuCategory'
+    ref: "MenuCategory",
+  },
+  food_type_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "FoodType",
   },
   name: {
     type: String,
-    required: true
+    required: true,
   },
   description: {
-    type: String
+    type: String,
   },
   image_url: {
-    type: String
+    type: String,
+  },
+  image_public_id: {
+    type: String,
   },
   price: {
     type: Number,
-    required: true
+    required: true,
   },
   is_available: {
     type: Boolean,
     required: true,
-    default: true
+    default: true,
   },
   preparation_time: {
     type: Number,
-    required: true
+    required: true,
   },
   created_at: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   updated_at: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-export const MenuItem = mongoose.model('MenuItem', menuItemSchema);
+export const MenuItem = mongoose.model("MenuItem", menuItemSchema);
