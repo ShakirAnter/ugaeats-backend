@@ -6,6 +6,9 @@ const foodTypeSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  icon: {
+    type: String,
+  },
   created_at: {
     type: Date,
     default: Date.now,
@@ -13,6 +16,5 @@ const foodTypeSchema = new mongoose.Schema({
 });
 
 export const FoodType = mongoose.model("FoodType", foodTypeSchema);
-
 
 // Add an icon to each FoodType in the future if needed

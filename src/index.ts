@@ -14,6 +14,8 @@ import menuCategoryRoutes from "./routes/menuCategory";
 import menuItemRoutes from "./routes/menuItem";
 import foodTypesRoutes, { seedFoodTypes } from "./routes/foodTypes";
 import cartRoutes from "./routes/cartRoutes";
+import addressRoutes from "./routes/address";
+import usersRoutes from "./routes/users"
 
 // Initialize express app
 const app = express();
@@ -30,6 +32,8 @@ app.use("/api/menucategories", menuCategoryRoutes);
 app.use("/api/menuitems", menuItemRoutes);
 app.use("/api/foodtypes", foodTypesRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/addresses", addressRoutes);
+app.use("/api/users", usersRoutes);
 
 // Error handling middleware
 app.use(

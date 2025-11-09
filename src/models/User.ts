@@ -4,6 +4,15 @@ import jwt from "jsonwebtoken";
 
 export type UserRole = "customer" | "restaurant" | "rider" | "admin";
 
+export interface IAddress {
+  _id?: mongoose.Types.ObjectId;
+  label?: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  created_at?: Date;
+}
+
 export interface IUser extends mongoose.Document {
   email: string;
   password: string;
@@ -12,10 +21,19 @@ export interface IUser extends mongoose.Document {
   role: UserRole;
   avatar_url?: string;
   avatar_public_id?: string;
+  addresses?: IAddress[];
   created_at: Date;
   updated_at: Date;
   generateAuthToken: () => Promise<string>;
 }
+
+const addressSchema = new mongoose.Schema({
+  label: { type: String }, // e.g. "Home", "Work"
+  address: { type: String, required: true },
+  latitude: { type: Number, required: true },
+  longitude: { type: Number, required: true },
+  created_at: { type: Date, default: Date.now },
+});
 
 const userSchema = new mongoose.Schema({
   full_name: {
@@ -39,8 +57,9 @@ const userSchema = new mongoose.Schema({
         // Require international format for Uganda: +256 followed by 9 digits (drop the leading 0)
         return /^\+256\d{9}$/.test(v);
       },
-      message: (props: any) => `${props.value} is not a valid Uganda phone number. Use +256XXXXXXXXX format.`
-    }
+      message: (props: any) =>
+        `${props.value} is not a valid Uganda phone number. Use +256XXXXXXXXX format.`,
+    },
   },
   avatar_url: {
     type: String,
@@ -53,6 +72,7 @@ const userSchema = new mongoose.Schema({
     enum: ["customer", "restaurant", "rider", "admin"],
     default: "customer",
   },
+  addresses: [addressSchema],
   password: {
     type: String,
     required: true,
@@ -78,11 +98,11 @@ userSchema.pre<IUser>("save", async function (this: IUser, next: any) {
     if (user.isModified && user.isModified("phone") && user.phone) {
       let p = (user.phone as string).toString();
       // remove spaces and dashes
-      p = p.replace(/[\s-]/g, '');
+      p = p.replace(/[\s-]/g, "");
       const localRegex = /^0\d{9}$/;
       const intlRegex = /^\+256\d{9}$/;
       if (localRegex.test(p)) {
-        p = '+256' + p.slice(1);
+        p = "+256" + p.slice(1);
       }
       // if it already matches intlRegex, keep it; otherwise leave and let mongoose validation fail
       user.phone = p;

@@ -251,6 +251,31 @@ router.get("/:id/menu", async (req, res) => {
   }
 });
 
+// routes/restaurants.ts
+router.patch("/:id/address", auth, async (req: any, res) => {
+  try {
+    if (req.user.role !== "restaurant" && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+
+    const { address, latitude, longitude } = req.body;
+    const restaurant = await Restaurant.findById(req.params.id);
+
+    if (!restaurant)
+      return res.status(404).json({ error: "Restaurant not found" });
+
+    restaurant.address = address;
+    restaurant.latitude = latitude;
+    restaurant.longitude = longitude;
+    restaurant.updated_at = new Date();
+
+    await restaurant.save();
+    res.json(restaurant);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
 
 // {
@@ -258,3 +283,72 @@ export default router;
 //     "description": "Mezo Noir is a cozy restaurant in the heart of Kampala serving the community with delicious food.",
 //     "address": "Off Kabojja, Plot 08 Somero Road, Kampala"
 // }
+
+
+
+
+// // Update user profile (supports avatar upload)
+// router.patch(
+//   "/me",
+//   auth,
+//   singleUploadToCloudinary("avatar", "avatar_url", "UgaEats/avatars"),
+//   async (req: any, res) => {
+//     try {
+//       const user = await User.findById(req.user._id);
+//       if (!user) {
+//         return res.status(404).json({ error: "User not found" });
+//       }
+
+//       // Handle avatar image replacement
+//       if (req.file || req.body.avatar_url) {
+//         const oldPublicId = user.avatar_public_id;
+//         if (oldPublicId) {
+//           try {
+//             await cloudinary.uploader.destroy(oldPublicId);
+//           } catch (destroyErr) {
+//             console.warn(
+//               "Failed to delete old avatar from Cloudinary",
+//               destroyErr
+//             );
+//           }
+//         }
+
+//         if (req.body.avatar_url_public_id) {
+//           user.avatar_public_id = req.body.avatar_url_public_id;
+//         }
+//         if (req.body.avatar_url) {
+//           user.avatar_url = req.body.avatar_url;
+//         }
+//       }
+
+//       // Normalize phone if provided
+//       if (req.body.phone) {
+//         const normalized = normalizeUgandaPhone(req.body.phone as string);
+//         if (!normalized) {
+//           return res.status(400).json({
+//             error:
+//               "Invalid phone number. Accepts local (0XXXXXXXXX) or international (+256XXXXXXXXX).",
+//           });
+//         }
+//         req.body.phone = normalized;
+//       }
+
+//       // Only update allowed fields
+//       const allowedUpdates = ["full_name", "email", "phone", "password"];
+//       for (const key of allowedUpdates) {
+//         if (req.body[key]) {
+//           (user as any)[key] = req.body[key];
+//         }
+//       }
+
+//       await user.save();
+//       return res.json(user);
+//     } catch (error: any) {
+//       console.error("Error updating user profile:", error);
+//       return res.status(400).json({
+//         error: error?.message || "Error updating profile",
+//         stack: error?.stack,
+//       });
+//     }
+//   }
+// );

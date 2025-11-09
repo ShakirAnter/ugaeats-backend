@@ -48,48 +48,36 @@ export function uploadBufferToCloudinary(
   });
 }
 
-export function singleUploadToCloudinary(
+export const singleUploadToCloudinary = (
   fieldName: string,
   targetField = "image_url",
   folder?: string
-) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    const single = upload.single(fieldName);
+) => {
+  const single = upload.single(fieldName);
 
-    single(req as any, res as any, async (err: any) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    single(req, res, async (err) => {
       if (err) return next(err);
 
-      const file = (req as any).file as any | undefined;
-      if (!file) {
-        console.log("⚠️ No file received");
-        return next(); // no file uploaded
-      }
+      // req.file and req.body are now properly populated
+      const file = req.file as Express.Multer.File | undefined;
+      if (!file) return next(); // no file uploaded
 
       try {
-        console.log(
-          "📸 Uploading to Cloudinary:",
-          file.originalname,
-          "size:",
-          file.size
-        );
         const result = await uploadBufferToCloudinary(file.buffer, { folder });
-        console.log("✅ Cloudinary upload result:", result);
 
-        if (!result || !result.secure_url) {
-          console.log("❌ Cloudinary returned no URL");
-          return next(new Error("Cloudinary upload failed"));
-        }
+        req.body = req.body || {};
+        req.body[targetField] = result.secure_url || result.url;
+        req.body[`${targetField}_public_id`] = result.public_id;
 
-        (req as any).body[targetField] = result.secure_url || result.url;
-        (req as any).body[`${targetField}_public_id`] = result.public_id;
         return next();
-      } catch (uploadErr) {
-        console.error("🚨 Upload error:", uploadErr);
-        return next(uploadErr);
+      } catch (error) {
+        console.error("Cloudinary upload failed:", error);
+        return next(error);
       }
     });
   };
-}
+};
 
 // Middleware wrapper for multiple files (array)
 export function multipleUploadToCloudinary(
