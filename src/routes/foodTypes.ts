@@ -51,7 +51,7 @@ export async function seedFoodTypes() {
 /**
  * Create Food Type (Admins only)
  */
-router.post("/", auth, async (req: any, res) => {
+router.post("/", auth, singleUploadToCloudinary("icon", "icon", "UgaEats/foodtypes/icons"), async (req: any, res) => {
   try {
     if (req.user.role !== "admin") {
       return res
@@ -99,7 +99,7 @@ router.get("/", async (req, res) => {
 router.patch(
   "/:id",
   auth,
-  singleUploadToCloudinary("icon", "icon", "foodtypes/icons"), // Uploads to Cloudinary folder
+  singleUploadToCloudinary("icon", "icon", "UgaEats/foodtypes/icons"), // Uploads to Cloudinary folder
   async (req: any, res) => {
     try {
       if (req.user.role !== "admin") {

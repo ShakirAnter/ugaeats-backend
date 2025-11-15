@@ -15,7 +15,12 @@ import menuItemRoutes from "./routes/menuItem";
 import foodTypesRoutes, { seedFoodTypes } from "./routes/foodTypes";
 import cartRoutes from "./routes/cartRoutes";
 import addressRoutes from "./routes/address";
-import usersRoutes from "./routes/users"
+import usersRoutes from "./routes/users";
+import searchRoutes from "./routes/search";
+import favoritesRoutes from "./routes/favorites";
+import reviewsRoutes from "./routes/reviews";
+import promoCodesRoutes from "./routes/promoCodes";
+import ridersRoutes from "./routes/riders";
 
 // Initialize express app
 const app = express();
@@ -34,6 +39,11 @@ app.use("/api/foodtypes", foodTypesRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/favorites", favoritesRoutes);
+app.use("/api/reviews", reviewsRoutes);
+app.use("/api/promos", promoCodesRoutes);
+app.use("/api/riders", ridersRoutes);
 
 // Error handling middleware
 app.use(

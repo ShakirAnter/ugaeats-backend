@@ -50,7 +50,7 @@ router.post(
         is_available,
         preparation_time,
         image_url: req.body.image_url,
-        image_public_id: req.body.image_url_public_id, // optional, if you want to store public_id
+        image_public_id: req.body.image_url_public_id,
       });
 
       await menuItem.save();
@@ -90,7 +90,6 @@ router.patch(
           .json({ error: "Not authorized to update this menu item" });
       }
 
-      // If new image uploaded, remove old one from Cloudinary
       if (req.body.image_url && menuItem.image_public_id) {
         try {
           await cloudinary.uploader.destroy(menuItem.image_public_id);
@@ -134,7 +133,6 @@ router.delete("/:itemId", auth, async (req: any, res) => {
         .json({ error: "Not authorized to delete this menu item" });
     }
 
-    // Remove image from Cloudinary
     if (menuItem.image_public_id) {
       try {
         await cloudinary.uploader.destroy(menuItem.image_public_id);
@@ -169,75 +167,66 @@ router.get("/restaurant/:restaurantId", async (req, res) => {
   }
 });
 
-export default router;
+/**
+ * Get menu items by food type ID
+ * Returns menu items grouped by restaurant
+ */
+router.get("/by-food-type/:foodTypeId", async (req, res) => {
+  try {
+    const { foodTypeId } = req.params;
 
+    const menuItems = await MenuItem.find({ food_type_id: foodTypeId })
+      .populate("restaurant_id")
+      .populate("category_id")
+      .populate("food_type_id");
 
+    const groupedByRestaurant: {
+      [key: string]: {
+        restaurant: any;
+        items: any[];
+      };
+    } = {};
 
+    menuItems.forEach((item: any) => {
+      const restaurantId = item.restaurant_id._id.toString();
+      if (!groupedByRestaurant[restaurantId]) {
+        groupedByRestaurant[restaurantId] = {
+          restaurant: item.restaurant_id,
+          items: [],
+        };
+      }
+      groupedByRestaurant[restaurantId].items.push(item);
+    });
 
+    const result = Object.values(groupedByRestaurant);
 
-[
-    {
-        "_id": "690b1ca70b6ae6e0eda07bdd",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Break Fast",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:45:11.244Z",
-        "__v": 0
-    },
-    {
-        "_id": "690b1cb10b6ae6e0eda07be1",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Burgers",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:45:21.050Z",
-        "__v": 0
-    },
-    {
-        "_id": "690b1cbf0b6ae6e0eda07be5",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Meat Corner",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:45:35.878Z",
-        "__v": 0
-    },
-    {
-        "_id": "690b1cca0b6ae6e0eda07be9",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Rice Meals",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:45:46.412Z",
-        "__v": 0
-    },
-    {
-        "_id": "690b1cd80b6ae6e0eda07bed",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Pilao Meals",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:46:00.363Z",
-        "__v": 0
-    },
-    {
-        "_id": "690b1ce10b6ae6e0eda07bf1",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Salads",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:46:09.337Z",
-        "__v": 0
-    },
-    {
-        "_id": "690b1cea0b6ae6e0eda07bf5",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Chips Meals",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:46:18.678Z",
-        "__v": 0
-    },
-    {
-        "_id": "690b1cf20b6ae6e0eda07bf9",
-        "restaurant_id": "6909be253ec2dd9fe4681a02",
-        "name": "Beverages",
-        "sort_order": 999,
-        "created_at": "2025-11-05T09:46:26.460Z",
-        "__v": 0
+    return res.json(result);
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ error: (error as any).message || "Error fetching menu items by food type" });
+  }
+});
+
+/**
+ * Get a single menu item by ID
+ */
+router.get("/:itemId", async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const menuItem = await MenuItem.findById(itemId)
+      .populate("restaurant_id")
+      .populate("category_id")
+      .populate("food_type_id");
+    
+    if (!menuItem) {
+      return res.status(404).json({ error: "Menu item not found" });
     }
-]
+    
+    return res.json(menuItem);
+  } catch (error) {
+    return res.status(500).json({ error: (error as any).message || "Error fetching menu item" });
+  }
+});
+
+export default router;

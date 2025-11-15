@@ -17,14 +17,19 @@ export interface IUser extends mongoose.Document {
   email: string;
   password: string;
   phone: string;
+  phoneVerificationCode?: string | null;
+  phoneVerificationExpiry?: Date | null;
   full_name: string;
   role: UserRole;
   avatar_url?: string;
   avatar_public_id?: string;
   addresses?: IAddress[];
+  favorite_restaurants?: string[];
+  favorite_dishes?: string[];
   created_at: Date;
   updated_at: Date;
   generateAuthToken: () => Promise<string>;
+  comparePassword: (enteredPassword: string) => Promise<boolean>;
 }
 
 const addressSchema = new mongoose.Schema({
@@ -61,6 +66,8 @@ const userSchema = new mongoose.Schema({
         `${props.value} is not a valid Uganda phone number. Use +256XXXXXXXXX format.`,
     },
   },
+  phoneVerificationCode: { type: String, default: null },
+  phoneVerificationExpiry: { type: Date, default: null },
   avatar_url: {
     type: String,
   },
@@ -73,6 +80,14 @@ const userSchema = new mongoose.Schema({
     default: "customer",
   },
   addresses: [addressSchema],
+  favorite_restaurants: {
+    type: [String],
+    default: [],
+  },
+  favorite_dishes: {
+    type: [String],
+    default: [],
+  },
   password: {
     type: String,
     required: true,
@@ -117,6 +132,11 @@ userSchema.pre<IUser>("save", async function (this: IUser, next: any) {
 
   next();
 });
+
+// Compare input password with hashed password
+userSchema.methods.comparePassword = async function (enteredPassword: string) {
+  return await bcrypt.compare(enteredPassword, this.password);
+};
 
 // Generate JWT token
 userSchema.methods.generateAuthToken = async function (this: IUser) {
