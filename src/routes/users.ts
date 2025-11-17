@@ -4,8 +4,6 @@ import { User } from "../models/User";
 import { singleUploadToCloudinary } from "../middleware/uploadToCloudinary";
 import { v2 as cloudinary } from "cloudinary";
 import { normalizeUgandaPhone } from "../utils/phone";
-import { sendVerificationCode, verifyCode } from "../utils/twilio";
-import { sendSMS } from "../utils/sms";
 
 const router = express.Router();
 

@@ -3,6 +3,7 @@ import { Order } from "../models/Order";
 import { Cart } from "../models/Cart";
 import { Restaurant } from "../models/Restaurant";
 import mongoose from "mongoose";
+import { Rider } from "../models/Rider";
 
 // Helper to generate unique order numbers
 const generateOrderNumber = () => {
@@ -106,9 +107,17 @@ export const getUserOrders = async (req: any, res: Response) => {
 // ✅ Get all orders assigned to rider
 export const getRiderOrders = async (req: any, res: Response) => {
   try {
-    const riderId = req.user._id;
+    const userId = req.user._id;
 
-    const orders = await Order.find({ rider_id: riderId })
+    // First, find the rider document for this user
+    const rider = await Rider.findOne({ user_id: userId });
+    
+    if (!rider) {
+      return res.status(404).json({ message: "Rider profile not found" });
+    }
+
+    // Then find all orders assigned to this rider
+    const orders = await Order.find({ rider_id: rider._id })
       .populate("restaurant_id", "name image_url delivery_fee")
       .sort({ created_at: -1 });
 
@@ -155,8 +164,12 @@ export const getOrderById = async (req: Request, res: Response) => {
 // ✅ Accept order (rider claims the order)
 export const acceptOrder = async (req: any, res: Response) => {
   try {
-    const riderId = req.user._id; // Rider ID from auth middleware
+    
     const order = await Order.findById(req.params.id);
+    const user = req.user;
+    const rider = await Rider.find({user_id: user._id});
+
+    console.log(rider);
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -171,7 +184,7 @@ export const acceptOrder = async (req: any, res: Response) => {
     }
 
     // Assign rider and update status to accepted (rider has claimed the order)
-    order.rider_id = new mongoose.Types.ObjectId(riderId);
+    order.rider_id = new mongoose.Types.ObjectId(rider[0]._id);
     order.status = "picked_up";
     order.picked_up_at = new Date();
 
@@ -281,14 +294,19 @@ export const cancelOrder = async (req: any, res: Response) => {
 export const updateDeliveryStatus = async (req: any, res: Response) => {
   try {
     const { status } = req.body;
-    const riderId = req.user._id;
+    const userId = req.user._id;
 
     // 1️⃣ Find the order
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // 2️⃣ Check if rider is assigned to this order
-    if (!order.rider_id || order.rider_id.toString() !== riderId.toString()) {
+    // 2️⃣ Find rider document for this user and check assignment
+    const rider = await Rider.findOne({ user_id: userId });
+    if (!rider) {
+      return res.status(404).json({ message: "Rider profile not found" });
+    }
+
+    if (!order.rider_id || order.rider_id.toString() !== rider._id.toString()) {
       return res.status(403).json({ message: "You are not assigned to this order" });
     }
 
