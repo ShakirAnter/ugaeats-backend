@@ -204,7 +204,10 @@ router.get("/by-food-type/:foodTypeId", async (req, res) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ error: (error as any).message || "Error fetching menu items by food type" });
+      .json({
+        error:
+          (error as any).message || "Error fetching menu items by food type",
+      });
   }
 });
 
@@ -218,15 +221,136 @@ router.get("/:itemId", async (req, res) => {
       .populate("restaurant_id")
       .populate("category_id")
       .populate("food_type_id");
-    
+
     if (!menuItem) {
       return res.status(404).json({ error: "Menu item not found" });
     }
-    
+
     return res.json(menuItem);
   } catch (error) {
-    return res.status(500).json({ error: (error as any).message || "Error fetching menu item" });
+    return res
+      .status(500)
+      .json({ error: (error as any).message || "Error fetching menu item" });
   }
 });
 
 export default router;
+
+[
+  {
+    _id: "69218c60a07e2b91ca937816",
+    restaurant_id: "692186e3a07e2b91ca93758d",
+    category_id: {
+      _id: "69218964a07e2b91ca9377dc",
+      restaurant_id: "692186e3a07e2b91ca93758d",
+      name: "Cold Starters",
+      description: "",
+      sort_order: 999,
+      created_at: "2025-11-22T09:59:00.671Z",
+      __v: 0,
+    },
+    food_type_id: {
+      _id: "690a0d84f8cc0262f1816ae5",
+      name: "Fast Food",
+      created_at: "2025-11-04T14:28:20.321Z",
+      __v: 0,
+      icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+    },
+    name: "Hummus with chicken shawarma",
+    description:
+      "Hummus tahina topped with chicken shawarma and olive oil. Served with pita bread.",
+    price: 25000,
+    is_available: true,
+    preparation_time: 15,
+    created_at: "2025-11-22T10:11:44.541Z",
+    updated_at: "2025-11-22T10:11:44.541Z",
+    __v: 0,
+  },
+  {
+    _id: "69218c8ba07e2b91ca93781b",
+    restaurant_id: "692186e3a07e2b91ca93758d",
+    category_id: {
+      _id: "69218964a07e2b91ca9377dc",
+      restaurant_id: "692186e3a07e2b91ca93758d",
+      name: "Cold Starters",
+      description: "",
+      sort_order: 999,
+      created_at: "2025-11-22T09:59:00.671Z",
+      __v: 0,
+    },
+    food_type_id: {
+      _id: "690a0d84f8cc0262f1816ae5",
+      name: "Fast Food",
+      created_at: "2025-11-04T14:28:20.321Z",
+      __v: 0,
+      icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+    },
+    name: "Hummus with beef shawarma",
+    description:
+      "Hummus topped with beef shawarma. Served with pita bread, olives.",
+    price: 25000,
+    is_available: true,
+    preparation_time: 15,
+    created_at: "2025-11-22T10:12:27.274Z",
+    updated_at: "2025-11-22T10:12:27.274Z",
+    __v: 0,
+  },
+  {
+    _id: "69218cfea07e2b91ca937820",
+    restaurant_id: "692186e3a07e2b91ca93758d",
+    category_id: {
+      _id: "69218964a07e2b91ca9377dc",
+      restaurant_id: "692186e3a07e2b91ca93758d",
+      name: "Cold Starters",
+      description: "",
+      sort_order: 999,
+      created_at: "2025-11-22T09:59:00.671Z",
+      __v: 0,
+    },
+    food_type_id: {
+      _id: "690a0d84f8cc0262f1816ae5",
+      name: "Fast Food",
+      created_at: "2025-11-04T14:28:20.321Z",
+      __v: 0,
+      icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+    },
+    name: "Bruschetta Classic",
+    description:
+      "Toasted bread topped with a fresh tomato, basil, and garlic relish. Drizzled with extra virgin olive oil for a burst of Mediterranean flavor. A simple yet unforgettable appetizer.",
+    price: 25000,
+    is_available: true,
+    preparation_time: 15,
+    created_at: "2025-11-22T10:14:22.117Z",
+    updated_at: "2025-11-22T10:14:22.117Z",
+    __v: 0,
+  },
+  {
+    _id: "69218daca07e2b91ca937825",
+    restaurant_id: "692186e3a07e2b91ca93758d",
+    category_id: {
+      _id: "69218964a07e2b91ca9377dc",
+      restaurant_id: "692186e3a07e2b91ca93758d",
+      name: "Cold Starters",
+      description: "",
+      sort_order: 999,
+      created_at: "2025-11-22T09:59:00.671Z",
+      __v: 0,
+    },
+    food_type_id: {
+      _id: "690a0d84f8cc0262f1816ae5",
+      name: "Fast Food",
+      created_at: "2025-11-04T14:28:20.321Z",
+      __v: 0,
+      icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+    },
+    name: "Hummus Tahina",
+    description:
+      "Creamy and authentic hummus, made with the finest chickpeas and rich Tahini. Served with pita bread, and a drizzle of extra virgin olive oil. Perfect for sharing and enjoying the authentic flavors of the Mediterranean",
+    price: 20000,
+    is_available: true,
+    preparation_time: 15,
+    created_at: "2025-11-22T10:17:16.977Z",
+    updated_at: "2025-11-22T10:17:16.977Z",
+    __v: 0,
+  },
+];

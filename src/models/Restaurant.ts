@@ -52,6 +52,11 @@ const restaurantSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  status: {
+    type: String,
+    enum: ["pending", "active", "suspended"],
+    default: "pending"
+  },
   commission_rate: {
     type: Number,
     required: true

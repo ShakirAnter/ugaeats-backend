@@ -79,6 +79,10 @@ const userSchema = new mongoose.Schema({
     enum: ["customer", "restaurant", "rider", "admin"],
     default: "customer",
   },
+  suspended: {
+    type: Boolean,
+    default: false
+  },
   addresses: [addressSchema],
   favorite_restaurants: {
     type: [String],
