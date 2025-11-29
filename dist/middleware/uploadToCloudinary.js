@@ -3,9 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.upload = void 0;
+exports.singleUploadToCloudinary = exports.upload = void 0;
 exports.uploadBufferToCloudinary = uploadBufferToCloudinary;
-exports.singleUploadToCloudinary = singleUploadToCloudinary;
 exports.multipleUploadToCloudinary = multipleUploadToCloudinary;
 const multer_1 = __importDefault(require("multer"));
 const cloudinary_1 = require("cloudinary");
@@ -47,36 +46,31 @@ function uploadBufferToCloudinary(buffer, options) {
         stream.end(buffer);
     });
 }
-function singleUploadToCloudinary(fieldName, targetField = "image_url", folder) {
+const singleUploadToCloudinary = (fieldName, targetField = "image_url", folder) => {
+    const single = exports.upload.single(fieldName);
     return async (req, res, next) => {
-        const single = exports.upload.single(fieldName);
         single(req, res, async (err) => {
             if (err)
                 return next(err);
+            // req.file and req.body are now properly populated
             const file = req.file;
-            if (!file) {
-                console.log("⚠️ No file received");
+            if (!file)
                 return next(); // no file uploaded
-            }
             try {
-                console.log("📸 Uploading to Cloudinary:", file.originalname, "size:", file.size);
                 const result = await uploadBufferToCloudinary(file.buffer, { folder });
-                console.log("✅ Cloudinary upload result:", result);
-                if (!result || !result.secure_url) {
-                    console.log("❌ Cloudinary returned no URL");
-                    return next(new Error("Cloudinary upload failed"));
-                }
+                req.body = req.body || {};
                 req.body[targetField] = result.secure_url || result.url;
                 req.body[`${targetField}_public_id`] = result.public_id;
                 return next();
             }
-            catch (uploadErr) {
-                console.error("🚨 Upload error:", uploadErr);
-                return next(uploadErr);
+            catch (error) {
+                console.error("Cloudinary upload failed:", error);
+                return next(error);
             }
         });
     };
-}
+};
+exports.singleUploadToCloudinary = singleUploadToCloudinary;
 // Middleware wrapper for multiple files (array)
 function multipleUploadToCloudinary(fieldName, maxCount = 5, targetField = "image_urls", folder) {
     return async (req, res, next) => {
@@ -104,6 +98,6 @@ function multipleUploadToCloudinary(fieldName, maxCount = 5, targetField = "imag
 exports.default = {
     upload: exports.upload,
     uploadBufferToCloudinary,
-    singleUploadToCloudinary,
+    singleUploadToCloudinary: exports.singleUploadToCloudinary,
     multipleUploadToCloudinary,
 };

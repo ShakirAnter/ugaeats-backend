@@ -7,6 +7,13 @@ exports.User = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const addressSchema = new mongoose_1.default.Schema({
+    label: { type: String }, // e.g. "Home", "Work"
+    address: { type: String, required: true },
+    latitude: { type: Number, required: true },
+    longitude: { type: Number, required: true },
+    created_at: { type: Date, default: Date.now },
+});
 const userSchema = new mongoose_1.default.Schema({
     full_name: {
         type: String,
@@ -29,9 +36,11 @@ const userSchema = new mongoose_1.default.Schema({
                 // Require international format for Uganda: +256 followed by 9 digits (drop the leading 0)
                 return /^\+256\d{9}$/.test(v);
             },
-            message: (props) => `${props.value} is not a valid Uganda phone number. Use +256XXXXXXXXX format.`
-        }
+            message: (props) => `${props.value} is not a valid Uganda phone number. Use +256XXXXXXXXX format.`,
+        },
     },
+    phoneVerificationCode: { type: String, default: null },
+    phoneVerificationExpiry: { type: Date, default: null },
     avatar_url: {
         type: String,
     },
@@ -42,6 +51,19 @@ const userSchema = new mongoose_1.default.Schema({
         type: String,
         enum: ["customer", "restaurant", "rider", "admin"],
         default: "customer",
+    },
+    suspended: {
+        type: Boolean,
+        default: false
+    },
+    addresses: [addressSchema],
+    favorite_restaurants: {
+        type: [String],
+        default: [],
+    },
+    favorite_dishes: {
+        type: [String],
+        default: [],
     },
     password: {
         type: String,
@@ -66,11 +88,11 @@ userSchema.pre("save", async function (next) {
         if (user.isModified && user.isModified("phone") && user.phone) {
             let p = user.phone.toString();
             // remove spaces and dashes
-            p = p.replace(/[\s-]/g, '');
+            p = p.replace(/[\s-]/g, "");
             const localRegex = /^0\d{9}$/;
             const intlRegex = /^\+256\d{9}$/;
             if (localRegex.test(p)) {
-                p = '+256' + p.slice(1);
+                p = "+256" + p.slice(1);
             }
             // if it already matches intlRegex, keep it; otherwise leave and let mongoose validation fail
             user.phone = p;
@@ -84,6 +106,10 @@ userSchema.pre("save", async function (next) {
     }
     next();
 });
+// Compare input password with hashed password
+userSchema.methods.comparePassword = async function (enteredPassword) {
+    return await bcryptjs_1.default.compare(enteredPassword, this.password);
+};
 // Generate JWT token
 userSchema.methods.generateAuthToken = async function () {
     const user = this;

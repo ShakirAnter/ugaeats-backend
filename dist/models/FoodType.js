@@ -11,6 +11,9 @@ const foodTypeSchema = new mongoose_1.default.Schema({
         required: true,
         unique: true,
     },
+    icon: {
+        type: String,
+    },
     created_at: {
         type: Date,
         default: Date.now,

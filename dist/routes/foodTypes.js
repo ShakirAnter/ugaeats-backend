@@ -9,6 +9,7 @@ exports.seedFoodTypes = seedFoodTypes;
 const express_1 = __importDefault(require("express"));
 const FoodType_1 = require("../models/FoodType");
 const auth_1 = require("../middleware/auth");
+const uploadToCloudinary_1 = require("../middleware/uploadToCloudinary");
 const router = express_1.default.Router();
 /**
  * Predefined food types (including Drinks)
@@ -55,7 +56,7 @@ async function seedFoodTypes() {
 /**
  * Create Food Type (Admins only)
  */
-router.post("/", auth_1.auth, async (req, res) => {
+router.post("/", auth_1.auth, (0, uploadToCloudinary_1.singleUploadToCloudinary)("icon", "icon", "UgaEats/foodtypes/icons"), async (req, res) => {
     try {
         if (req.user.role !== "admin") {
             return res
@@ -94,8 +95,10 @@ router.get("/", async (req, res) => {
 });
 /**
  * Update Food Type (Admins only)
+ * Supports updating `name` and uploading an `icon` to Cloudinary
  */
-router.patch("/:id", auth_1.auth, async (req, res) => {
+router.patch("/:id", auth_1.auth, (0, uploadToCloudinary_1.singleUploadToCloudinary)("icon", "icon", "UgaEats/foodtypes/icons"), // Uploads to Cloudinary folder
+async (req, res) => {
     try {
         if (req.user.role !== "admin") {
             return res
@@ -105,11 +108,22 @@ router.patch("/:id", auth_1.auth, async (req, res) => {
         const foodType = await FoodType_1.FoodType.findById(req.params.id);
         if (!foodType)
             return res.status(404).json({ error: "Food type not found" });
-        Object.assign(foodType, req.body);
+        // ✅ Update name if provided
+        if (req.body.name) {
+            foodType.name = req.body.name;
+        }
+        // ✅ Update icon URL if new image uploaded
+        if (req.body.icon) {
+            foodType.icon = req.body.icon;
+        }
         await foodType.save();
-        return res.json(foodType);
+        return res.json({
+            message: "Food type updated successfully",
+            foodType,
+        });
     }
     catch (error) {
+        console.error("Error updating food type:", error);
         return res
             .status(500)
             .json({ error: error.message || "Error updating food type" });
@@ -138,3 +152,101 @@ router.delete("/:id", auth_1.auth, async (req, res) => {
     }
 });
 exports.default = router;
+[
+    {
+        "_id": "690a0d83f8cc0262f1816adf",
+        "name": "Beverages",
+        "created_at": "2025-11-04T14:28:19.048Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d81f8cc0262f1816ad6",
+        "name": "Breakfast",
+        "created_at": "2025-11-04T14:28:17.507Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d7df8cc0262f1816abe",
+        "name": "Burgers",
+        "created_at": "2025-11-04T14:28:13.419Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d82f8cc0262f1816adc",
+        "name": "Desserts",
+        "created_at": "2025-11-04T14:28:18.523Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d83f8cc0262f1816ae2",
+        "name": "Drinks",
+        "created_at": "2025-11-04T14:28:19.649Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d84f8cc0262f1816ae5",
+        "name": "Fast Food",
+        "created_at": "2025-11-04T14:28:20.321Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d7ef8cc0262f1816ac7",
+        "name": "Pasta",
+        "created_at": "2025-11-04T14:28:14.954Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d7cf8cc0262f1816aba",
+        "name": "Pizzas",
+        "created_at": "2025-11-04T14:28:12.654Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d7ff8cc0262f1816aca",
+        "name": "Rice & Noodles",
+        "created_at": "2025-11-04T14:28:15.457Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d7ef8cc0262f1816ac4",
+        "name": "Salads",
+        "created_at": "2025-11-04T14:28:14.453Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d7df8cc0262f1816ac1",
+        "name": "Sandwiches",
+        "created_at": "2025-11-04T14:28:13.942Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d80f8cc0262f1816ad0",
+        "name": "Seafood",
+        "created_at": "2025-11-04T14:28:16.482Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d82f8cc0262f1816ad9",
+        "name": "Snacks & Appetizers",
+        "created_at": "2025-11-04T14:28:18.018Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d7ff8cc0262f1816acd",
+        "name": "Soups",
+        "created_at": "2025-11-04T14:28:15.959Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d80f8cc0262f1816ad3",
+        "name": "Steaks & Grills",
+        "created_at": "2025-11-04T14:28:16.994Z",
+        "__v": 0
+    },
+    {
+        "_id": "690a0d84f8cc0262f1816ae8",
+        "name": "Vegan & Vegetarian",
+        "created_at": "2025-11-04T14:28:20.935Z",
+        "__v": 0
+    }
+];

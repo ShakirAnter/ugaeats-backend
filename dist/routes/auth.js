@@ -20,12 +20,17 @@ router.post('/register', async (req, res) => {
         if (!normalizedPhone) {
             return res.status(400).json({ error: 'Phone number must be a valid Uganda number (e.g. 0768057482 or +256768057482).' });
         }
+        // Validate role if provided
+        const validRoles = ['customer', 'rider', 'restaurant', 'admin'];
+        if (role && !validRoles.includes(role)) {
+            return res.status(400).json({ error: 'Invalid role' });
+        }
         // Check if user already exists by email or phone
         const existingUser = await User_1.User.findOne({ $or: [{ email }, { phone: normalizedPhone }] });
         if (existingUser) {
             return res.status(400).json({ error: 'Email or phone already registered' });
         }
-        // Create new user
+        // Create new user (default to 'customer' if no role specified)
         const user = new User_1.User({
             email,
             password,

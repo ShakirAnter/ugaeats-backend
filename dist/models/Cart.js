@@ -18,6 +18,9 @@ const cartItemSchema = new mongoose_1.default.Schema({
         min: 1,
         default: 1,
     },
+    specialInstructions: {
+        type: String
+    },
     price: {
         type: Number,
         required: true,

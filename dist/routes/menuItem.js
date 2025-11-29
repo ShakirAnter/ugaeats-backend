@@ -36,7 +36,7 @@ router.post("/:restaurantId", auth_1.auth, (0, uploadToCloudinary_1.singleUpload
             is_available,
             preparation_time,
             image_url: req.body.image_url,
-            image_public_id: req.body.image_url_public_id, // optional, if you want to store public_id
+            image_public_id: req.body.image_url_public_id,
         });
         await menuItem.save();
         return res.status(201).json(menuItem);
@@ -65,7 +65,6 @@ router.patch("/:itemId", auth_1.auth, (0, uploadToCloudinary_1.singleUploadToClo
                 .status(403)
                 .json({ error: "Not authorized to update this menu item" });
         }
-        // If new image uploaded, remove old one from Cloudinary
         if (req.body.image_url && menuItem.image_public_id) {
             try {
                 await cloudinary_1.v2.uploader.destroy(menuItem.image_public_id);
@@ -103,7 +102,6 @@ router.delete("/:itemId", auth_1.auth, async (req, res) => {
                 .status(403)
                 .json({ error: "Not authorized to delete this menu item" });
         }
-        // Remove image from Cloudinary
         if (menuItem.image_public_id) {
             try {
                 await cloudinary_1.v2.uploader.destroy(menuItem.image_public_id);
@@ -138,4 +136,172 @@ router.get("/restaurant/:restaurantId", async (req, res) => {
             .json({ error: error.message || "Error fetching menu items" });
     }
 });
+/**
+ * Get menu items by food type ID
+ * Returns menu items grouped by restaurant
+ */
+router.get("/by-food-type/:foodTypeId", async (req, res) => {
+    try {
+        const { foodTypeId } = req.params;
+        const menuItems = await MenuItem_1.MenuItem.find({ food_type_id: foodTypeId })
+            .populate("restaurant_id")
+            .populate("category_id")
+            .populate("food_type_id");
+        const groupedByRestaurant = {};
+        menuItems.forEach((item) => {
+            const restaurantId = item.restaurant_id._id.toString();
+            if (!groupedByRestaurant[restaurantId]) {
+                groupedByRestaurant[restaurantId] = {
+                    restaurant: item.restaurant_id,
+                    items: [],
+                };
+            }
+            groupedByRestaurant[restaurantId].items.push(item);
+        });
+        const result = Object.values(groupedByRestaurant);
+        return res.json(result);
+    }
+    catch (error) {
+        return res
+            .status(500)
+            .json({
+            error: error.message || "Error fetching menu items by food type",
+        });
+    }
+});
+/**
+ * Get a single menu item by ID
+ */
+router.get("/:itemId", async (req, res) => {
+    try {
+        const { itemId } = req.params;
+        const menuItem = await MenuItem_1.MenuItem.findById(itemId)
+            .populate("restaurant_id")
+            .populate("category_id")
+            .populate("food_type_id");
+        if (!menuItem) {
+            return res.status(404).json({ error: "Menu item not found" });
+        }
+        return res.json(menuItem);
+    }
+    catch (error) {
+        return res
+            .status(500)
+            .json({ error: error.message || "Error fetching menu item" });
+    }
+});
 exports.default = router;
+[
+    {
+        _id: "69218c60a07e2b91ca937816",
+        restaurant_id: "692186e3a07e2b91ca93758d",
+        category_id: {
+            _id: "69218964a07e2b91ca9377dc",
+            restaurant_id: "692186e3a07e2b91ca93758d",
+            name: "Cold Starters",
+            description: "",
+            sort_order: 999,
+            created_at: "2025-11-22T09:59:00.671Z",
+            __v: 0,
+        },
+        food_type_id: {
+            _id: "690a0d84f8cc0262f1816ae5",
+            name: "Fast Food",
+            created_at: "2025-11-04T14:28:20.321Z",
+            __v: 0,
+            icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+        },
+        name: "Hummus with chicken shawarma",
+        description: "Hummus tahina topped with chicken shawarma and olive oil. Served with pita bread.",
+        price: 25000,
+        is_available: true,
+        preparation_time: 15,
+        created_at: "2025-11-22T10:11:44.541Z",
+        updated_at: "2025-11-22T10:11:44.541Z",
+        __v: 0,
+    },
+    {
+        _id: "69218c8ba07e2b91ca93781b",
+        restaurant_id: "692186e3a07e2b91ca93758d",
+        category_id: {
+            _id: "69218964a07e2b91ca9377dc",
+            restaurant_id: "692186e3a07e2b91ca93758d",
+            name: "Cold Starters",
+            description: "",
+            sort_order: 999,
+            created_at: "2025-11-22T09:59:00.671Z",
+            __v: 0,
+        },
+        food_type_id: {
+            _id: "690a0d84f8cc0262f1816ae5",
+            name: "Fast Food",
+            created_at: "2025-11-04T14:28:20.321Z",
+            __v: 0,
+            icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+        },
+        name: "Hummus with beef shawarma",
+        description: "Hummus topped with beef shawarma. Served with pita bread, olives.",
+        price: 25000,
+        is_available: true,
+        preparation_time: 15,
+        created_at: "2025-11-22T10:12:27.274Z",
+        updated_at: "2025-11-22T10:12:27.274Z",
+        __v: 0,
+    },
+    {
+        _id: "69218cfea07e2b91ca937820",
+        restaurant_id: "692186e3a07e2b91ca93758d",
+        category_id: {
+            _id: "69218964a07e2b91ca9377dc",
+            restaurant_id: "692186e3a07e2b91ca93758d",
+            name: "Cold Starters",
+            description: "",
+            sort_order: 999,
+            created_at: "2025-11-22T09:59:00.671Z",
+            __v: 0,
+        },
+        food_type_id: {
+            _id: "690a0d84f8cc0262f1816ae5",
+            name: "Fast Food",
+            created_at: "2025-11-04T14:28:20.321Z",
+            __v: 0,
+            icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+        },
+        name: "Bruschetta Classic",
+        description: "Toasted bread topped with a fresh tomato, basil, and garlic relish. Drizzled with extra virgin olive oil for a burst of Mediterranean flavor. A simple yet unforgettable appetizer.",
+        price: 25000,
+        is_available: true,
+        preparation_time: 15,
+        created_at: "2025-11-22T10:14:22.117Z",
+        updated_at: "2025-11-22T10:14:22.117Z",
+        __v: 0,
+    },
+    {
+        _id: "69218daca07e2b91ca937825",
+        restaurant_id: "692186e3a07e2b91ca93758d",
+        category_id: {
+            _id: "69218964a07e2b91ca9377dc",
+            restaurant_id: "692186e3a07e2b91ca93758d",
+            name: "Cold Starters",
+            description: "",
+            sort_order: 999,
+            created_at: "2025-11-22T09:59:00.671Z",
+            __v: 0,
+        },
+        food_type_id: {
+            _id: "690a0d84f8cc0262f1816ae5",
+            name: "Fast Food",
+            created_at: "2025-11-04T14:28:20.321Z",
+            __v: 0,
+            icon: "https://res.cloudinary.com/ddnljoevw/image/upload/v1762512399/foodtypes/icons/oxshvt9ytmw1wf7km5ye.png",
+        },
+        name: "Hummus Tahina",
+        description: "Creamy and authentic hummus, made with the finest chickpeas and rich Tahini. Served with pita bread, and a drizzle of extra virgin olive oil. Perfect for sharing and enjoying the authentic flavors of the Mediterranean",
+        price: 20000,
+        is_available: true,
+        preparation_time: 15,
+        created_at: "2025-11-22T10:17:16.977Z",
+        updated_at: "2025-11-22T10:17:16.977Z",
+        __v: 0,
+    },
+];

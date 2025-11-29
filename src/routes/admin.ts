@@ -90,10 +90,15 @@ router.get("/menuitems", auth, onlyAdmin, async (req, res) => {
   }
 });
 
-// Manage orders system-wide
+// Manage orders system-wide - by default return open orders only. Use ?history=true to include delivered/cancelled orders.
 router.get("/orders", auth, onlyAdmin, async (req, res) => {
   try {
-    const orders = await Order.find().populate("restaurant_id", "name").populate("customer_id", "full_name email").sort({ created_at: -1 });
+    const history = String(req.query.history || '').toLowerCase() === 'true' || req.query.history === '1';
+    const openStatuses = ["pending","accepted","preparing","ready","picked_up","on_the_way"];
+    const q: any = {};
+    if (!history) q.status = { $in: openStatuses };
+
+    const orders = await Order.find(q).populate("restaurant_id", "name").populate("customer_id", "full_name email").sort({ created_at: -1 });
     res.json(orders);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

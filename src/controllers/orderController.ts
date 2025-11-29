@@ -73,12 +73,17 @@ export const createOrder = async (req: any, res: Response) => {
 
     await newOrder.save();
 
+    // Return the order with related data populated so frontend can display richer info
+    const populatedOrder = await Order.findById(newOrder._id)
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone email");
+
     // 6️⃣ Delete the cart after checkout
     await Cart.findByIdAndDelete(cart_id);
 
     res.status(201).json({
       message: "Order created successfully",
-      order: newOrder,
+      order: populatedOrder || newOrder,
     });
   } catch (error: any) {
     console.error("Error creating order:", error);
@@ -93,8 +98,17 @@ export const getUserOrders = async (req: any, res: Response) => {
   try {
     const userId = req.user._id;
 
-    const orders = await Order.find({ customer_id: userId })
-      .populate("restaurant_id", "name logo_url")
+    // By default return only "open" orders for the user. Pass ?history=true to include completed / cancelled orders.
+    const history = String(req.query.history || '').toLowerCase() === 'true' || req.query.history === '1';
+    const openStatuses = ["pending","accepted","preparing","ready","picked_up","on_the_way"];
+
+    const q: any = { customer_id: userId };
+    if (!history) q.status = { $in: openStatuses };
+
+    const orders = await Order.find(q)
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone")
+      .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } })
       .sort({ created_at: -1 });
 
     res.status(200).json(orders);
@@ -118,7 +132,9 @@ export const getRiderOrders = async (req: any, res: Response) => {
 
     // Then find all orders assigned to this rider
     const orders = await Order.find({ rider_id: rider._id })
-      .populate("restaurant_id", "name image_url delivery_fee")
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone")
+      .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } })
       .sort({ created_at: -1 });
 
     res.status(200).json(orders);
@@ -131,11 +147,12 @@ export const getRiderOrders = async (req: any, res: Response) => {
 // ✅ Get available orders for riders (status: ready, not yet assigned)
 export const getAvailableOrders = async (req: any, res: Response) => {
   try {
-    const orders = await Order.find({ 
-      status: "ready", 
-      rider_id: { $exists: false } 
+    const orders = await Order.find({
+      status: "ready",
+      rider_id: { $exists: false },
     })
-      .populate("restaurant_id", "name image_url delivery_fee")
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone")
       .sort({ created_at: -1 });
 
     res.status(200).json(orders);
@@ -148,10 +165,10 @@ export const getAvailableOrders = async (req: any, res: Response) => {
 // ✅ Get single order
 export const getOrderById = async (req: Request, res: Response) => {
   try {
-    const order = await Order.findById(req.params.id).populate(
-      "restaurant_id",
-      "name logo_url"
-    );
+    const order = await Order.findById(req.params.id)
+      .populate("restaurant_id", "name image_url address phone")
+      .populate("customer_id", "full_name avatar_url phone email")
+      .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } });
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     res.status(200).json(order);
@@ -190,9 +207,14 @@ export const acceptOrder = async (req: any, res: Response) => {
 
     await order.save();
 
+    const populatedOrder = await Order.findById(order._id)
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone email")
+      .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } });
+
     res.status(200).json({
       message: "Order accepted successfully",
-      order,
+      order: populatedOrder || order,
     });
   } catch (error: any) {
     console.error("Error accepting order:", error);
@@ -237,9 +259,12 @@ export const updateOrderStatus = async (req: any, res: Response) => {
 
     await order.save();
 
-    res
-      .status(200)
-      .json({ message: "Order status updated successfully", order });
+    const populatedOrder = await Order.findById(order._id)
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone email")
+      .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } });
+
+    res.status(200).json({ message: "Order status updated successfully", order: populatedOrder || order });
   } catch (error: any) {
     console.error("Error updating order:", error);
     res
@@ -261,29 +286,47 @@ export const cancelOrder = async (req: any, res: Response) => {
         .status(400)
         .json({ message: "Cannot cancel a delivered order" });
 
-    // If rider is cancelling their pickup (order has rider_id)
-    if (order.rider_id && order.rider_id.toString() === userId.toString()) {
-      // Revert to ready so another rider can accept it
-      order.rider_id = undefined;
-      order.status = "ready";
-      order.cancellation_reason = reason;
+    // If a rider is cancelling their pickup, allow them to release the order back to 'ready'
+    if (order.rider_id) {
+      // Find the rider document for the acting user (rider.user_id === user._id)
+      const riderDoc = await Rider.findOne({ user_id: userId });
+      // If the acting user is the assigned rider, allow reverting the order to ready
+      if (riderDoc && order.rider_id.toString() === riderDoc._id.toString()) {
+        order.rider_id = undefined;
+        order.status = "ready"; // make it available for other riders
+        order.cancellation_reason = reason || "Pickup cancelled by rider";
 
-      await order.save();
+        await order.save();
 
-      return res.status(200).json({ 
-        message: "Pickup cancelled. Order is available for other riders.", 
-        order 
-      });
+        const populatedOrder = await Order.findById(order._id)
+          .populate("restaurant_id", "name image_url delivery_fee address")
+          .populate("customer_id", "full_name avatar_url phone email");
+
+        return res.status(200).json({
+          message: "Pickup cancelled by rider. Order is available for other riders.",
+          order: populatedOrder || order,
+        });
+      }
     }
 
-    // Otherwise, it's a customer cancellation
-    order.status = "cancelled";
-    order.cancellation_reason = reason;
-    order.cancelled_at = new Date();
+    // If the customer (owner of the order) is cancelling, mark it cancelled
+    if (order.customer_id && order.customer_id.toString() === userId.toString()) {
+      order.status = "cancelled";
+      order.cancellation_reason = reason || "Cancelled by customer";
+      order.cancelled_at = new Date();
+    } else {
+      // Admins are not allowed to cancel orders and only the customer (owner) or an assigned rider can
+      return res.status(403).json({ message: 'Not authorized to cancel this order' });
+    }
 
     await order.save();
 
-    res.status(200).json({ message: "Order cancelled successfully", order });
+    const populatedOrder = await Order.findById(order._id)
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone email")
+      .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } });
+
+    res.status(200).json({ message: "Order cancelled successfully", order: populatedOrder || order });
   } catch (error: any) {
     console.error("Error cancelling order:", error);
     res.status(500).json({ message: "Failed to cancel order" });
@@ -330,10 +373,12 @@ export const updateDeliveryStatus = async (req: any, res: Response) => {
 
     await order.save();
 
-    res.status(200).json({
-      message: `Order status updated to ${status}`,
-      order,
-    });
+    const populatedOrder = await Order.findById(order._id)
+      .populate("restaurant_id", "name image_url delivery_fee address")
+      .populate("customer_id", "full_name avatar_url phone email")
+      .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } });
+
+    res.status(200).json({ message: `Order status updated to ${status}`, order: populatedOrder || order });
   } catch (error: any) {
     console.error("Error updating delivery status:", error);
     res.status(500).json({ message: "Failed to update delivery status", error: error.message });

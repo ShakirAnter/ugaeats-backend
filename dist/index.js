@@ -50,6 +50,15 @@ const menuCategory_1 = __importDefault(require("./routes/menuCategory"));
 const menuItem_1 = __importDefault(require("./routes/menuItem"));
 const foodTypes_1 = __importStar(require("./routes/foodTypes"));
 const cartRoutes_1 = __importDefault(require("./routes/cartRoutes"));
+const address_1 = __importDefault(require("./routes/address"));
+const users_1 = __importDefault(require("./routes/users"));
+const search_1 = __importDefault(require("./routes/search"));
+const favorites_1 = __importDefault(require("./routes/favorites"));
+const reviews_1 = __importDefault(require("./routes/reviews"));
+const promoCodes_1 = __importDefault(require("./routes/promoCodes"));
+const riders_1 = __importDefault(require("./routes/riders"));
+const admin_1 = __importDefault(require("./routes/admin"));
+const restaurantDashboard_1 = __importDefault(require("./routes/restaurantDashboard"));
 // Initialize express app
 const app = (0, express_1.default)();
 // Middleware
@@ -63,6 +72,15 @@ app.use("/api/menucategories", menuCategory_1.default);
 app.use("/api/menuitems", menuItem_1.default);
 app.use("/api/foodtypes", foodTypes_1.default);
 app.use("/api/cart", cartRoutes_1.default);
+app.use("/api/addresses", address_1.default);
+app.use("/api/users", users_1.default);
+app.use("/api/search", search_1.default);
+app.use("/api/favorites", favorites_1.default);
+app.use("/api/reviews", reviews_1.default);
+app.use("/api/promos", promoCodes_1.default);
+app.use("/api/riders", riders_1.default);
+app.use("/api/admin", admin_1.default);
+app.use("/api/restaurant-dashboard", restaurantDashboard_1.default);
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
