@@ -59,7 +59,7 @@ router.put("/restaurants/:id/suspend", auth, onlyAdmin, async (req: any, res) =>
 // Manage users: list
 router.get("/users", auth, onlyAdmin, async (req, res) => {
   try {
-    const users = await User.find().select("full_name email phone role created_at");
+    const users = await User.find().select("full_name email phone avatar_url suspended role created_at");
     res.json(users);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -75,6 +75,35 @@ router.put("/users/:id", auth, onlyAdmin, async (req: any, res) => {
     if (typeof req.body.suspended !== "undefined") (user as any).suspended = !!req.body.suspended;
     await user.save();
     res.json({ message: "User updated", user });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Suspend a user
+router.put("/users/:id/suspend", auth, onlyAdmin, async (req: any, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    user.suspended = true;
+    // optional: set a status string, keep compatibility with client expectations
+    (user as any).status = "suspended";
+    await user.save();
+    res.json({ message: "User suspended", user });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Activate/reactivate a suspended user
+router.put("/users/:id/activate", auth, onlyAdmin, async (req: any, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    user.suspended = false;
+    (user as any).status = "active";
+    await user.save();
+    res.json({ message: "User activated", user });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -155,7 +184,8 @@ router.get("/analytics/daily", auth, onlyAdmin, async (req, res) => {
 // Rider locations
 router.get("/riders/locations", auth, onlyAdmin, async (req, res) => {
   try {
-    const riders = await Rider.find().select("user_id current_latitude current_longitude is_available").populate("user_id", "full_name phone");
+    // Return richer rider information (for admin UI) including vehicle info, delivery stats and verification
+    const riders = await Rider.find().select("user_id vehicle_type vehicle_number is_available is_verified total_deliveries rating current_latitude current_longitude created_at updated_at").populate("user_id", "full_name phone avatar_url");
     res.json(riders);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -21,6 +21,7 @@ export interface IUser extends mongoose.Document {
   phoneVerificationExpiry?: Date | null;
   full_name: string;
   role: UserRole;
+  suspended?: boolean;
   avatar_url?: string;
   avatar_public_id?: string;
   addresses?: IAddress[];
