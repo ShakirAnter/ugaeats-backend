@@ -10,6 +10,7 @@ const User_1 = require("../models/User");
 const MenuItem_1 = require("../models/MenuItem");
 const Order_1 = require("../models/Order");
 const Rider_1 = require("../models/Rider");
+const Settings_1 = require("../models/Settings");
 const router = express_1.default.Router();
 // Middleware: only admin
 const onlyAdmin = (req, res, next) => {
@@ -64,7 +65,7 @@ router.put("/restaurants/:id/suspend", auth_1.auth, onlyAdmin, async (req, res) 
 // Manage users: list
 router.get("/users", auth_1.auth, onlyAdmin, async (req, res) => {
     try {
-        const users = await User_1.User.find().select("full_name email phone role created_at");
+        const users = await User_1.User.find().select("full_name email phone avatar_url suspended role created_at");
         res.json(users);
     }
     catch (err) {
@@ -88,6 +89,37 @@ router.put("/users/:id", auth_1.auth, onlyAdmin, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// Suspend a user
+router.put("/users/:id/suspend", auth_1.auth, onlyAdmin, async (req, res) => {
+    try {
+        const user = await User_1.User.findById(req.params.id);
+        if (!user)
+            return res.status(404).json({ error: "User not found" });
+        user.suspended = true;
+        // optional: set a status string, keep compatibility with client expectations
+        user.status = "suspended";
+        await user.save();
+        res.json({ message: "User suspended", user });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Activate/reactivate a suspended user
+router.put("/users/:id/activate", auth_1.auth, onlyAdmin, async (req, res) => {
+    try {
+        const user = await User_1.User.findById(req.params.id);
+        if (!user)
+            return res.status(404).json({ error: "User not found" });
+        user.suspended = false;
+        user.status = "active";
+        await user.save();
+        res.json({ message: "User activated", user });
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 // Get all menu items across restaurants
 router.get("/menuitems", auth_1.auth, onlyAdmin, async (req, res) => {
     try {
@@ -98,10 +130,15 @@ router.get("/menuitems", auth_1.auth, onlyAdmin, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-// Manage orders system-wide
+// Manage orders system-wide - by default return open orders only. Use ?history=true to include delivered/cancelled orders.
 router.get("/orders", auth_1.auth, onlyAdmin, async (req, res) => {
     try {
-        const orders = await Order_1.Order.find().populate("restaurant_id", "name").populate("customer_id", "full_name email").sort({ created_at: -1 });
+        const history = String(req.query.history || '').toLowerCase() === 'true' || req.query.history === '1';
+        const openStatuses = ["pending", "accepted", "preparing", "ready", "picked_up", "on_the_way"];
+        const q = {};
+        if (!history)
+            q.status = { $in: openStatuses };
+        const orders = await Order_1.Order.find(q).populate("restaurant_id", "name").populate("customer_id", "full_name email").sort({ created_at: -1 });
         res.json(orders);
     }
     catch (err) {
@@ -156,8 +193,42 @@ router.get("/analytics/daily", auth_1.auth, onlyAdmin, async (req, res) => {
 // Rider locations
 router.get("/riders/locations", auth_1.auth, onlyAdmin, async (req, res) => {
     try {
-        const riders = await Rider_1.Rider.find().select("user_id current_latitude current_longitude is_available").populate("user_id", "full_name phone");
+        // Return richer rider information (for admin UI) including vehicle info, delivery stats and verification
+        const riders = await Rider_1.Rider.find().select("user_id vehicle_type vehicle_number is_available is_verified total_deliveries rating current_latitude current_longitude created_at updated_at").populate("user_id", "full_name phone avatar_url");
         res.json(riders);
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Get global settings (create defaults if missing)
+router.get("/settings", auth_1.auth, onlyAdmin, async (req, res) => {
+    try {
+        let settings = await Settings_1.Settings.findOne({ key: "global" });
+        if (!settings) {
+            settings = await Settings_1.Settings.create({ key: "global" });
+        }
+        res.json(settings);
+    }
+    catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// Patch/update global settings (partial update allowed)
+router.patch("/settings", auth_1.auth, onlyAdmin, async (req, res) => {
+    try {
+        let settings = await Settings_1.Settings.findOne({ key: "global" });
+        if (!settings)
+            settings = await Settings_1.Settings.create({ key: "global" });
+        // Merge allowed sections
+        const allowed = ["ui", "notifications", "system", "delivery"];
+        for (const section of allowed) {
+            if (req.body[section]) {
+                settings[section] = { ...settings[section], ...req.body[section] };
+            }
+        }
+        await settings.save();
+        res.json({ message: "Settings updated", settings });
     }
     catch (err) {
         res.status(500).json({ error: err.message });

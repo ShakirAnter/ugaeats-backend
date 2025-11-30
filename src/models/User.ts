@@ -29,6 +29,7 @@ export interface IUser extends mongoose.Document {
   favorite_dishes?: string[];
   created_at: Date;
   updated_at: Date;
+  preferred_theme?: 'light' | 'dark' | 'system' | null;
   generateAuthToken: () => Promise<string>;
   comparePassword: (enteredPassword: string) => Promise<boolean>;
 }
@@ -106,6 +107,7 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  preferred_theme: { type: String, enum: ['light', 'dark', 'system'], default: null },
 });
 
 // Hash password before saving

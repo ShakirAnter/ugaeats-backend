@@ -81,7 +81,13 @@ exports.createOrder = createOrder;
 const getUserOrders = async (req, res) => {
     try {
         const userId = req.user._id;
-        const orders = await Order_1.Order.find({ customer_id: userId })
+        // By default return only "open" orders for the user. Pass ?history=true to include completed / cancelled orders.
+        const history = String(req.query.history || '').toLowerCase() === 'true' || req.query.history === '1';
+        const openStatuses = ["pending", "accepted", "preparing", "ready", "picked_up", "on_the_way"];
+        const q = { customer_id: userId };
+        if (!history)
+            q.status = { $in: openStatuses };
+        const orders = await Order_1.Order.find(q)
             .populate("restaurant_id", "name image_url delivery_fee address")
             .populate("customer_id", "full_name avatar_url phone")
             .populate({ path: "rider_id", populate: { path: "user_id", select: "full_name avatar_url phone" } })
@@ -274,13 +280,8 @@ const cancelOrder = async (req, res) => {
             order.cancellation_reason = reason || "Cancelled by customer";
             order.cancelled_at = new Date();
         }
-        else if (req.user && req.user.role === 'admin') {
-            // Admins may cancel orders system-wide
-            order.status = "cancelled";
-            order.cancellation_reason = reason || "Cancelled by admin";
-            order.cancelled_at = new Date();
-        }
         else {
+            // Admins are not allowed to cancel orders and only the customer (owner) or an assigned rider can
             return res.status(403).json({ message: 'Not authorized to cancel this order' });
         }
         await order.save();

@@ -58,6 +58,7 @@ const reviews_1 = __importDefault(require("./routes/reviews"));
 const promoCodes_1 = __importDefault(require("./routes/promoCodes"));
 const riders_1 = __importDefault(require("./routes/riders"));
 const admin_1 = __importDefault(require("./routes/admin"));
+const settings_1 = __importDefault(require("./routes/settings"));
 const restaurantDashboard_1 = __importDefault(require("./routes/restaurantDashboard"));
 // Initialize express app
 const app = (0, express_1.default)();
@@ -80,6 +81,7 @@ app.use("/api/reviews", reviews_1.default);
 app.use("/api/promos", promoCodes_1.default);
 app.use("/api/riders", riders_1.default);
 app.use("/api/admin", admin_1.default);
+app.use("/api/settings", settings_1.default);
 app.use("/api/restaurant-dashboard", restaurantDashboard_1.default);
 // Error handling middleware
 app.use((err, req, res, next) => {

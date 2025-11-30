@@ -5,6 +5,7 @@ import { User } from "../models/User";
 import { MenuItem } from "../models/MenuItem";
 import { Order } from "../models/Order";
 import { Rider } from "../models/Rider";
+import { Settings } from "../models/Settings";
 
 const router = express.Router();
 
@@ -187,6 +188,40 @@ router.get("/riders/locations", auth, onlyAdmin, async (req, res) => {
     // Return richer rider information (for admin UI) including vehicle info, delivery stats and verification
     const riders = await Rider.find().select("user_id vehicle_type vehicle_number is_available is_verified total_deliveries rating current_latitude current_longitude created_at updated_at").populate("user_id", "full_name phone avatar_url");
     res.json(riders);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get global settings (create defaults if missing)
+router.get("/settings", auth, onlyAdmin, async (req, res) => {
+  try {
+    let settings = await Settings.findOne({ key: "global" });
+    if (!settings) {
+      settings = await Settings.create({ key: "global" });
+    }
+    res.json(settings);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Patch/update global settings (partial update allowed)
+router.patch("/settings", auth, onlyAdmin, async (req: any, res) => {
+  try {
+    let settings = await Settings.findOne({ key: "global" });
+    if (!settings) settings = await Settings.create({ key: "global" });
+
+    // Merge allowed sections
+    const allowed = ["ui", "notifications", "system", "delivery"];
+    for (const section of allowed) {
+      if (req.body[section]) {
+        (settings as any)[section] = { ...(settings as any)[section], ...req.body[section] };
+      }
+    }
+
+    await settings.save();
+    res.json({ message: "Settings updated", settings });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

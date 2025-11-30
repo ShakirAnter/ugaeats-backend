@@ -22,6 +22,7 @@ import reviewsRoutes from "./routes/reviews";
 import promoCodesRoutes from "./routes/promoCodes";
 import ridersRoutes from "./routes/riders";
 import adminRoutes from "./routes/admin";
+import settingsRoutes from "./routes/settings";
 import restaurantDashboardRoutes from "./routes/restaurantDashboard";
 
 // Initialize express app
@@ -47,6 +48,7 @@ app.use("/api/reviews", reviewsRoutes);
 app.use("/api/promos", promoCodesRoutes);
 app.use("/api/riders", ridersRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/settings", settingsRoutes);
 app.use("/api/restaurant-dashboard", restaurantDashboardRoutes);
 
 // Error handling middleware

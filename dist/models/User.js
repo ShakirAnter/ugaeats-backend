@@ -78,6 +78,7 @@ const userSchema = new mongoose_1.default.Schema({
         type: Date,
         default: Date.now,
     },
+    preferred_theme: { type: String, enum: ['light', 'dark', 'system'], default: null },
 });
 // Hash password before saving
 userSchema.pre("save", async function (next) {
