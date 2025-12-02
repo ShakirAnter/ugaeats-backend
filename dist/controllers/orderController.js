@@ -40,6 +40,10 @@ const createOrder = async (req, res) => {
         const subtotal = cart.items.reduce((sum, item) => sum + item.subtotal, 0);
         const delivery_fee = restaurant.delivery_fee;
         const total_amount = subtotal + delivery_fee;
+        // Revenue split (business rule): app takes 10% of the order subtotal, restaurant receives the remainder.
+        // Riders keep the delivery_fee in full.
+        const app_cut = Number((subtotal * 0.1).toFixed(2));
+        const restaurant_earnings = Number((subtotal - app_cut).toFixed(2));
         // 5️⃣ Create new order
         const newOrder = new Order_1.Order({
             order_number: generateOrderNumber(),
@@ -49,6 +53,8 @@ const createOrder = async (req, res) => {
             subtotal,
             delivery_fee,
             total_amount,
+            app_cut,
+            restaurant_earnings,
             payment_method,
             payment_status: "pending",
             delivery_address,

@@ -35,22 +35,38 @@ router.get("/summary", auth, async (req: any, res) => {
     if (!isAdmin && !isOwner) return res.status(403).json({ error: "Not authorized" });
 
     const totalOrders = await Order.countDocuments({ restaurant_id: restaurant._id });
+    // Revenue split: report total sales (total_amount), platform cuts and net restaurant earnings
     const revenueAgg = await Order.aggregate([
       { $match: { restaurant_id: restaurant._id, payment_status: "completed" } },
-      { $group: { _id: null, revenue: { $sum: "$total_amount" } } },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$total_amount" },
+          totalAppCuts: { $sum: "$app_cut" },
+          totalRestaurantEarnings: { $sum: "$restaurant_earnings" },
+        },
+      },
     ]);
-    const totalRevenue = revenueAgg[0]?.revenue || 0;
+
+    const totalRevenue = revenueAgg[0]?.totalSales || 0;
+    const totalAppCuts = revenueAgg[0]?.totalAppCuts || 0;
+    const totalRestaurantEarnings = revenueAgg[0]?.totalRestaurantEarnings || 0;
 
     // best-selling items
+    // Aggregate top selling items and include menu item data (image_url) via lookup
     const bestSelling = await Order.aggregate([
       { $match: { restaurant_id: restaurant._id } },
       { $unwind: "$items" },
       { $group: { _id: "$items.menu_item_id", name: { $first: "$items.name" }, sold: { $sum: "$items.quantity" } } },
+      // lookup the menu item document to fetch image_url
+      { $lookup: { from: 'menuitems', localField: '_id', foreignField: '_id', as: 'menu_item' } },
+      { $unwind: { path: '$menu_item', preserveNullAndEmptyArrays: true } },
+      { $project: { _id: 1, name: 1, sold: 1, image_url: '$menu_item.image_url' } },
       { $sort: { sold: -1 } },
       { $limit: 5 },
     ]);
 
-    res.json({ totalOrders, totalRevenue, bestSelling });
+    res.json({ totalOrders, totalRevenue, totalAppCuts, totalRestaurantEarnings, bestSelling });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

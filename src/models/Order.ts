@@ -75,6 +75,18 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  // Platform commission: 10% of the order subtotal (does not include delivery_fee)
+  app_cut: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
+  // Amount that goes to the restaurant: subtotal - app_cut
+  restaurant_earnings: {
+    type: Number,
+    required: true,
+    default: 0,
+  },
   payment_method: {
     type: String,
     enum: ["cash", "mtn_momo"],

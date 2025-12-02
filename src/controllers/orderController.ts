@@ -53,6 +53,11 @@ export const createOrder = async (req: any, res: Response) => {
     const delivery_fee = restaurant.delivery_fee;
     const total_amount = subtotal + delivery_fee;
 
+    // Revenue split (business rule): app takes 10% of the order subtotal, restaurant receives the remainder.
+    // Riders keep the delivery_fee in full.
+    const app_cut = Number((subtotal * 0.1).toFixed(2));
+    const restaurant_earnings = Number((subtotal - app_cut).toFixed(2));
+
     // 5️⃣ Create new order
     const newOrder = new Order({
       order_number: generateOrderNumber(),
@@ -62,6 +67,8 @@ export const createOrder = async (req: any, res: Response) => {
       subtotal,
       delivery_fee,
       total_amount,
+      app_cut,
+      restaurant_earnings,
       payment_method,
       payment_status: "pending",
       delivery_address,
@@ -254,7 +261,15 @@ export const updateOrderStatus = async (req: any, res: Response) => {
     if (status === "accepted") order.accepted_at = new Date();
     if (status === "ready") order.ready_at = new Date();
     if (status === "picked_up") order.picked_up_at = new Date();
-    if (status === "delivered") order.delivered_at = new Date();
+    if (status === "delivered") {
+      order.delivered_at = new Date();
+
+      // If client indicates payment was received by rider, update payment_status
+      // Clients can send { payment_received: true } in the body when marking delivered
+      if (req.body && req.body.payment_received) {
+        order.payment_status = 'completed';
+      }
+    }
     if (status === "cancelled") order.cancelled_at = new Date();
 
     await order.save();
@@ -369,7 +384,13 @@ export const updateDeliveryStatus = async (req: any, res: Response) => {
     // 4️⃣ Update order status and timestamp
     order.status = status;
     
-    if (status === "delivered") order.delivered_at = new Date();
+    if (status === "delivered") {
+      order.delivered_at = new Date();
+      if (req.body && req.body.payment_status) {
+        // rider confirmed cash was received from customer
+        order.payment_status = 'completed';
+      }
+    }
 
     await order.save();
 

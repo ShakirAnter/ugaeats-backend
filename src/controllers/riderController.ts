@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { Rider } from "../models/Rider";
+import { Order } from "../models/Order";
+import { Review } from "../models/Review";
 import { User } from "../models/User";
 
 // ✅ Register as a rider
@@ -63,7 +65,37 @@ export const getRiderProfile = async (req: any, res: Response) => {
       return res.status(404).json({ message: "Rider profile not found" });
     }
 
-    res.status(200).json(rider);
+    // Compute aggregated stats for the rider: total deliveries, earnings (sum of delivery fees), and average rating
+    try {
+      const riderId = (rider as any)._id;
+
+      // Total delivered orders assigned to this rider
+      const deliveredOrders = await Order.find({ rider_id: riderId, status: 'delivered' });
+      const total_deliveries = deliveredOrders.length;
+
+      // Sum delivery_fee from delivered orders
+      const total_earnings = deliveredOrders.reduce((sum: number, o: any) => sum + (o.delivery_fee || 0), 0);
+
+      // Average rider rating from reviews (rider_rating field)
+      const ratingAgg = await Review.aggregate([
+        { $match: { rider_id: riderId, rider_rating: { $exists: true } } },
+        { $group: { _id: null, avgRating: { $avg: "$rider_rating" } } },
+      ]);
+
+      const avgRating = (ratingAgg && ratingAgg[0] && ratingAgg[0].avgRating) ? Number(ratingAgg[0].avgRating.toFixed(1)) : (rider.rating || 0);
+
+      // Shallow clone and attach computed fields
+      const result = (rider as any).toObject ? (rider as any).toObject() : rider;
+      result.total_deliveries = total_deliveries;
+      result.total_earnings = total_earnings;
+      result.rating = avgRating;
+
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error('Error computing rider stats:', err);
+      // Fall back to the rider document
+      return res.status(200).json(rider);
+    }
   } catch (error: any) {
     console.error("Error fetching rider profile:", error);
     res

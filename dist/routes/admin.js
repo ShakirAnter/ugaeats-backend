@@ -147,17 +147,19 @@ router.get("/orders", auth_1.auth, onlyAdmin, async (req, res) => {
 });
 // Analytics: totals and simple stats
 router.get("/analytics/summary", auth_1.auth, onlyAdmin, async (req, res) => {
-    var _a;
+    var _a, _b;
     try {
         const totalOrders = await Order_1.Order.countDocuments();
+        // Total sales across the platform (sum of order total_amount for completed payments)
         const totalRevenueAgg = await Order_1.Order.aggregate([
             { $match: { payment_status: "completed" } },
-            { $group: { _id: null, revenue: { $sum: "$total_amount" } } },
+            { $group: { _id: null, revenue: { $sum: "$total_amount" }, appRevenue: { $sum: "$app_cut" } } },
         ]);
         const totalRevenue = ((_a = totalRevenueAgg[0]) === null || _a === void 0 ? void 0 : _a.revenue) || 0;
+        const totalAppRevenue = ((_b = totalRevenueAgg[0]) === null || _b === void 0 ? void 0 : _b.appRevenue) || 0;
         const totalRestaurants = await Restaurant_1.Restaurant.countDocuments();
         const totalRiders = await Rider_1.Rider.countDocuments();
-        res.json({ totalOrders, totalRevenue, totalRestaurants, totalRiders });
+        res.json({ totalOrders, totalRevenue, totalAppRevenue, totalRestaurants, totalRiders });
     }
     catch (err) {
         res.status(500).json({ error: err.message });
@@ -180,6 +182,7 @@ router.get("/analytics/daily", auth_1.auth, onlyAdmin, async (req, res) => {
                     },
                     orders: { $sum: 1 },
                     revenue: { $sum: "$total_amount" },
+                    appRevenue: { $sum: "$app_cut" },
                 },
             },
             { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },

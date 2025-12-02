@@ -139,15 +139,17 @@ router.get("/orders", auth, onlyAdmin, async (req, res) => {
 router.get("/analytics/summary", auth, onlyAdmin, async (req, res) => {
   try {
     const totalOrders = await Order.countDocuments();
+    // Total sales across the platform (sum of order total_amount for completed payments)
     const totalRevenueAgg = await Order.aggregate([
       { $match: { payment_status: "completed" } },
-      { $group: { _id: null, revenue: { $sum: "$total_amount" } } },
+      { $group: { _id: null, revenue: { $sum: "$total_amount" }, appRevenue: { $sum: "$app_cut" } } },
     ]);
     const totalRevenue = totalRevenueAgg[0]?.revenue || 0;
+    const totalAppRevenue = totalRevenueAgg[0]?.appRevenue || 0;
     const totalRestaurants = await Restaurant.countDocuments();
     const totalRiders = await Rider.countDocuments();
 
-    res.json({ totalOrders, totalRevenue, totalRestaurants, totalRiders });
+    res.json({ totalOrders, totalRevenue, totalAppRevenue, totalRestaurants, totalRiders });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -164,15 +166,16 @@ router.get("/analytics/daily", auth, onlyAdmin, async (req, res) => {
       { $match: { created_at: { $gte: since }, payment_status: "completed" } },
       {
         $group: {
-          _id: {
-            year: { $year: "$created_at" },
-            month: { $month: "$created_at" },
-            day: { $dayOfMonth: "$created_at" },
+            _id: {
+              year: { $year: "$created_at" },
+              month: { $month: "$created_at" },
+              day: { $dayOfMonth: "$created_at" },
+            },
+            orders: { $sum: 1 },
+            revenue: { $sum: "$total_amount" },
+            appRevenue: { $sum: "$app_cut" },
           },
-          orders: { $sum: 1 },
-          revenue: { $sum: "$total_amount" },
         },
-      },
       { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
     ]);
 

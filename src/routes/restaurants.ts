@@ -58,7 +58,12 @@ router.post(
 // Get all restaurants
 router.get("/", async (req, res) => {
   try {
-    const restaurants = await Restaurant.find();
+    // Allow fetching restaurants by owner id (useful for restaurant owners who sign in)
+    const ownerId = req.query.owner_id as string | undefined;
+    const query: any = {};
+    if (ownerId) query.owner_id = ownerId;
+
+    const restaurants = await Restaurant.find(query);
     return res.json(restaurants);
   } catch (error) {
     return res

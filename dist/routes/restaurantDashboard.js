@@ -28,7 +28,7 @@ const ownerOrAdmin = async (req, res, next) => {
 };
 // Dashboard summary for a restaurant
 router.get("/summary", auth_1.auth, async (req, res) => {
-    var _a;
+    var _a, _b, _c;
     try {
         // restaurant id may come from query or derive from owner's restaurants
         const restaurantId = req.query.restaurant_id;
@@ -43,20 +43,35 @@ router.get("/summary", auth_1.auth, async (req, res) => {
         if (!isAdmin && !isOwner)
             return res.status(403).json({ error: "Not authorized" });
         const totalOrders = await Order_1.Order.countDocuments({ restaurant_id: restaurant._id });
+        // Revenue split: report total sales (total_amount), platform cuts and net restaurant earnings
         const revenueAgg = await Order_1.Order.aggregate([
             { $match: { restaurant_id: restaurant._id, payment_status: "completed" } },
-            { $group: { _id: null, revenue: { $sum: "$total_amount" } } },
+            {
+                $group: {
+                    _id: null,
+                    totalSales: { $sum: "$total_amount" },
+                    totalAppCuts: { $sum: "$app_cut" },
+                    totalRestaurantEarnings: { $sum: "$restaurant_earnings" },
+                },
+            },
         ]);
-        const totalRevenue = ((_a = revenueAgg[0]) === null || _a === void 0 ? void 0 : _a.revenue) || 0;
+        const totalRevenue = ((_a = revenueAgg[0]) === null || _a === void 0 ? void 0 : _a.totalSales) || 0;
+        const totalAppCuts = ((_b = revenueAgg[0]) === null || _b === void 0 ? void 0 : _b.totalAppCuts) || 0;
+        const totalRestaurantEarnings = ((_c = revenueAgg[0]) === null || _c === void 0 ? void 0 : _c.totalRestaurantEarnings) || 0;
         // best-selling items
+        // Aggregate top selling items and include menu item data (image_url) via lookup
         const bestSelling = await Order_1.Order.aggregate([
             { $match: { restaurant_id: restaurant._id } },
             { $unwind: "$items" },
             { $group: { _id: "$items.menu_item_id", name: { $first: "$items.name" }, sold: { $sum: "$items.quantity" } } },
+            // lookup the menu item document to fetch image_url
+            { $lookup: { from: 'menuitems', localField: '_id', foreignField: '_id', as: 'menu_item' } },
+            { $unwind: { path: '$menu_item', preserveNullAndEmptyArrays: true } },
+            { $project: { _id: 1, name: 1, sold: 1, image_url: '$menu_item.image_url' } },
             { $sort: { sold: -1 } },
             { $limit: 5 },
         ]);
-        res.json({ totalOrders, totalRevenue, bestSelling });
+        res.json({ totalOrders, totalRevenue, totalAppCuts, totalRestaurantEarnings, bestSelling });
     }
     catch (err) {
         res.status(500).json({ error: err.message });

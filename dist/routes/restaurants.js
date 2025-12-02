@@ -51,7 +51,12 @@ router.post("/", auth_1.auth, (0, uploadToCloudinary_1.singleUploadToCloudinary)
 // Get all restaurants
 router.get("/", async (req, res) => {
     try {
-        const restaurants = await Restaurant_1.Restaurant.find();
+        // Allow fetching restaurants by owner id (useful for restaurant owners who sign in)
+        const ownerId = req.query.owner_id;
+        const query = {};
+        if (ownerId)
+            query.owner_id = ownerId;
+        const restaurants = await Restaurant_1.Restaurant.find(query);
         return res.json(restaurants);
     }
     catch (error) {

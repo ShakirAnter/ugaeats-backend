@@ -125,9 +125,10 @@ router.delete("/:itemId", auth_1.auth, async (req, res) => {
 router.get("/restaurant/:restaurantId", async (req, res) => {
     try {
         const { restaurantId } = req.params;
+        // populate category (name) and food type (name) for convenience in frontend
         const menuItems = await MenuItem_1.MenuItem.find({ restaurant_id: restaurantId })
-            .populate("category_id")
-            .populate("food_type_id");
+            .populate({ path: 'category_id', select: 'name' })
+            .populate({ path: 'food_type_id', select: 'name' });
         return res.json(menuItems);
     }
     catch (error) {
